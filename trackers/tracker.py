@@ -2,8 +2,10 @@ from ultralytics import YOLO
 import supervision as sv
 import pickle
 import os
+import numpy as np
 import sys
 import cv2
+import pandas as pd
 sys.path.append('../')
 from utils import get_centre_bbox,get_bbox_width
 
@@ -13,6 +15,18 @@ class Tracker:
     def __init__(self,model_path):
         self.model = YOLO(model_path)
         self.tracker = sv.ByteTrack()
+    
+    def interpulate_ball_position(self,ball_positions):
+        ball_positions = [x.get(1,{}).get('bbox',[])for x in ball_positions]
+        df_ball_positions = pd.DataFrame(ball_positions,columns=['x1','y1','x2','y2'])
+
+        #inturpulate missing vals
+        df_ball_positions.interpolate(inplace=True)
+        df_ball_positions.bfill(inplace=True)
+
+        ball_positions = [{1: {'bbox':x}} for x in df_ball_positions.to_numpy().tolist()]
+
+        return ball_positions
     
     def detect_frames(self,frames):
         batch_size= 20
@@ -77,7 +91,7 @@ class Tracker:
 
         return tracks
     
-    def draw_ellipse(self,frame,bbox,color,track_id):
+    def draw_ellipse(self,frame,bbox,color,track_id=None):
         y2=int(bbox[3])
         x_centre,_ = get_centre_bbox(bbox)
         width = get_bbox_width(bbox)
@@ -93,9 +107,43 @@ class Tracker:
             thickness=2, 
             lineType=cv2.LINE_4
         )
-        return frame
 
+        rectangle_width = 40
+        rectangle_height = 20
+        x1_rect = x_centre - rectangle_width//2
+        x2_rect = x_centre + rectangle_width//2
+        y1_rect = (y2- rectangle_height//2) +10
+        y2_rect = (y2+ rectangle_height//2) +10
+
+        if track_id is not None:
+            cv2.rectangle(frame,
+                          (int(x1_rect),int(y1_rect)),
+                          (int(x2_rect),int(y2_rect)),
+                          color,
+                          cv2.FILLED)
+            x1_text = x1_rect+10
+            if track_id > 99:
+                x1_text -=10 
+            cv2.putText(
+                frame,
+                f"{track_id}",
+                (int(x1_text),int(y1_rect+10)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0,0,0),
+                2
+            )
+        return frame
+    def draw_triangle(self,frame,bbox,color):
+        y = int(bbox[1])
+        x,_ = get_centre_bbox(bbox)
+
+        triangle_points= np.array([[x,y],[x-10,y-20],[x+10,y-20]])
+
+        cv2.drawContours(frame,[triangle_points],0,color,cv2.FILLED)
+        cv2.drawContours(frame,[triangle_points],0,(0,0,0),2)
         
+        return frame
 
     def draw_annotations(self,video_frames,tracks):
         output_video_frames = []
@@ -107,12 +155,18 @@ class Tracker:
             referee_dict =tracks['referees'][frame_num]
 
             #drawing players
-
             for track_id, player in player_dict.items():
-                frame = self.draw_ellipse(frame,player['bbox'],(0,0,255),track_id)
+                colour = player.get('team_colour',(0,0,255))
+                frame = self.draw_ellipse(frame,player['bbox'],colour,track_id)
+            #drawing referees
+            for _, referee in referee_dict.items():
+                frame = self.draw_ellipse(frame,referee['bbox'],(0,255,255))
 
+            #drawing ball
+            for _, ball in ball_dict.items():
+                frame = self.draw_triangle(frame,ball['bbox'],(0,255,0))
             
             output_video_frames.append(frame)
 
         return output_video_frames
-
+    

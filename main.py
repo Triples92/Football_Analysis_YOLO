@@ -1,6 +1,7 @@
 from utils import read_video, save_video
 from trackers import Tracker
-
+from team_assigner import TeamAssigner
+import cv2
 
 def main():
     #read video
@@ -10,6 +11,23 @@ def main():
 
     tracker = Tracker('training/models/best.pt')
     tracks = tracker.get_object_tracks(video_frames,read_from_stub=True,stub_path='stubs/track_stubs.pkl')
+    
+    #interpolate ball positions
+
+    tracks['ball']= tracker.interpulate_ball_position(tracks['ball'])
+
+    #assign player teams
+
+    team_assigner = TeamAssigner()
+
+    team_assigner.assign_team_colour(video_frames[0],tracks['players'][0]) #will get colours from players in the first frame to assign to teams
+
+    for frame_number,player_track in enumerate(tracks['players']):
+        for player_id, track in player_track.items():
+            team = team_assigner.get_player_team(video_frames[frame_number],
+                                                 track['bbox'],
+                                                 player_id)
+            tracks['players'][frame_number][player_id]['team_colour'] = team_assigner.team_colours[team]
 
     #draw output
     ## draw object tracks
