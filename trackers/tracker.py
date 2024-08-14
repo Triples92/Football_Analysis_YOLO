@@ -108,31 +108,31 @@ class Tracker:
             lineType=cv2.LINE_4
         )
 
-        rectangle_width = 40
-        rectangle_height = 20
-        x1_rect = x_centre - rectangle_width//2
-        x2_rect = x_centre + rectangle_width//2
-        y1_rect = (y2- rectangle_height//2) +10
-        y2_rect = (y2+ rectangle_height//2) +10
+        # rectangle_width = 40
+        # rectangle_height = 20
+        # x1_rect = x_centre - rectangle_width//2
+        # x2_rect = x_centre + rectangle_width//2
+        # y1_rect = (y2- rectangle_height//2) +10
+        # y2_rect = (y2+ rectangle_height//2) +10
 
-        if track_id is not None:
-            cv2.rectangle(frame,
-                          (int(x1_rect),int(y1_rect)),
-                          (int(x2_rect),int(y2_rect)),
-                          color,
-                          cv2.FILLED)
-            x1_text = x1_rect+10
-            if track_id > 99:
-                x1_text -=10 
-            cv2.putText(
-                frame,
-                f"{track_id}",
-                (int(x1_text),int(y1_rect+10)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0,0,0),
-                2
-            )
+        # if track_id is not None:
+        #     cv2.rectangle(frame,
+        #                   (int(x1_rect),int(y1_rect)),
+        #                   (int(x2_rect),int(y2_rect)),
+        #                   color,
+        #                   cv2.FILLED)
+        #     x1_text = x1_rect+10
+        #     if track_id > 99:
+        #         x1_text -=10 
+        #     cv2.putText(
+        #         frame,
+        #         f"{track_id}",
+        #         (int(x1_text),int(y1_rect+10)),
+        #         cv2.FONT_HERSHEY_SIMPLEX,
+        #         0.6,
+        #         (0,0,0),
+        #         2
+        #     )
         return frame
     def draw_triangle(self,frame,bbox,color):
         y = int(bbox[1])
@@ -145,7 +145,27 @@ class Tracker:
         
         return frame
 
-    def draw_annotations(self,video_frames,tracks):
+    def draw_team_ball_control(self,frame,frame_num,team_ball_control):
+        #draw translusent rectangle
+        overlay = frame.copy()
+        cv2.rectangle(overlay,(1350,850),(1900,970),(255,255,255),cv2.FILLED)
+        alpha = 0.4
+        cv2.addWeighted(overlay,alpha,frame,1 - alpha, 0,frame)
+
+        team_ball_control_till_frame= team_ball_control[:frame_num +1]
+        #get number of times each team has the ball
+        team_1_num_frames = team_ball_control_till_frame[team_ball_control_till_frame==1].shape[0]
+        team_2_num_frames = team_ball_control_till_frame[team_ball_control_till_frame==2].shape[0]
+        
+        team_1 = team_1_num_frames/(team_1_num_frames + team_2_num_frames)
+        team_2 = team_2_num_frames/(team_1_num_frames + team_2_num_frames)
+
+        cv2.putText(frame,f"Team 1 Ball Possession {team_1*100:.2f}%",(1400,900),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),3)
+        cv2.putText(frame,f"Team 2 Ball Possession {team_2*100:.2f}%",(1400,950),cv2.FONT_HERSHEY_SIMPLEX,1,(0,0,0),3)
+        
+        return frame
+
+    def draw_annotations(self,video_frames,tracks,draw_team_ball_control):
         output_video_frames = []
         for frame_num, frame in enumerate(video_frames):
             frame = frame.copy()
@@ -158,6 +178,8 @@ class Tracker:
             for track_id, player in player_dict.items():
                 colour = player.get('team_colour',(0,0,255))
                 frame = self.draw_ellipse(frame,player['bbox'],colour,track_id)
+                if player.get('has_ball',False):
+                    frame = self.draw_triangle(frame,player['bbox'],(0,0,255))
             #drawing referees
             for _, referee in referee_dict.items():
                 frame = self.draw_ellipse(frame,referee['bbox'],(0,255,255))
@@ -166,6 +188,8 @@ class Tracker:
             for _, ball in ball_dict.items():
                 frame = self.draw_triangle(frame,ball['bbox'],(0,255,0))
             
+            #draw ball control
+            frame = self.draw_team_ball_control(frame, frame_num, draw_team_ball_control)
             output_video_frames.append(frame)
 
         return output_video_frames

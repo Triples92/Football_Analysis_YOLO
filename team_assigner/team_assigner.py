@@ -55,6 +55,11 @@ class TeamAssigner:
         player_colour = self.get_player_colour(frame,player_bbox)
         team_id = self.kmeans.predict(player_colour.reshape(1,-1))[0]
         team_id+=1 
+        
+        #hard coded assigner to account for goalkeepers
+        if player_id in (96,103,128,134,146,127,150):
+            team_id = 1
+
 
         self.player_team_dict[player_id] = team_id
 
