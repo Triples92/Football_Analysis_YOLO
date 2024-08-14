@@ -12,6 +12,7 @@ This project uses YOLO's computer vision model to calculate ball possession by t
 
 I wanted to find a project that aligns with my interests that also involves using computer vision models. This project was originally done by [Abdullah Tarek](https://github.com/abdullahtarek/football_analysis). I have limited my project to simply calculating ball possession. 
 
+You can view the [30 second demo here](https://drive.google.com/file/d/1DlSpmrtFX5tnPd14TJ86_N6AmUwJnNBM/view?usp=sharing)!
 
 ## Models Used
 
