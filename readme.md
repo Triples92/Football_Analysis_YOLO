@@ -1,6 +1,6 @@
 # Football Possession Analyzer
 
-![output_video_gif](https://github.com/user-attachments/assets/1bb9f552-9c15-44ca-a3e5-f7a64fcc271b)
+<img src='https://github.com/user-attachments/assets/1bb9f552-9c15-44ca-a3e5-f7a64fcc271b' width="250" height="150"/>
 
 ### What is it?
 
